@@ -63,7 +63,7 @@ try:
     @wrapt.patch_function_wrapper('aiohttp.web','Application.__init__')
     def init_with_instana(wrapped, instance, argv, kwargs):
         if "middlewares" in kwargs:
-            kwargs["middlewares"].append(stan_middleware)
+            kwargs["middlewares"].insert(0, stan_middleware)
         else:
             kwargs["middlewares"] = [stan_middleware]
 
