@@ -54,8 +54,9 @@ try:
             return response
         except Exception:
             logger.debug("aiohttp stan_middleware", exc_info=True)
+            raise
         finally:
-            if scope is not None:
+            if locals()["scope"] is not None:
                 scope.close()
 
 
