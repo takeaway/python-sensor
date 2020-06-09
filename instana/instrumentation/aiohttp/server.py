@@ -8,6 +8,19 @@ from ...singletons import agent, async_tracer
 from ...util import strip_secrets
 
 
+def handle_aiohttp_exception(scope, exception, http_status_code=500):
+    logger.debug("aiohttp stan_middleware", exc_info=True)
+    if scope is not None:
+
+        if hasattr(getattr(exception, 'headers', None), '__setitem__'):
+            async_tracer.inject(scope.span.context, opentracing.Format.HTTP_HEADERS, exception.headers)
+            exception.headers['Server-Timing'] = "intid;desc=%s" % scope.span.context.trace_id
+
+        scope.span.set_tag("http.status_code", http_status_code)
+        if 500 <= http_status_code <= 511:
+            scope.span.log_exception(exception)
+
+
 try:
     import aiohttp
     import asyncio
@@ -49,11 +62,13 @@ try:
                 response.headers['Server-Timing'] = "intid;desc=%s" % scope.span.context.trace_id
 
             return response
+
+        except aiohttp.web_exceptions.HTTPError as e:
+            handle_aiohttp_exception(scope, e, e.status_code)
+            raise
+
         except Exception as e:
-            logger.debug("aiohttp stan_middleware", exc_info=True)
-            if scope is not None:
-                scope.span.set_tag("http.status_code", 500)
-                scope.span.log_exception(e)
+            handle_aiohttp_exception(scope, e, 500)
             raise
         finally:
             if scope is not None:
@@ -72,4 +87,3 @@ try:
     logger.debug("Instrumenting aiohttp server")
 except ImportError:
     pass
-
