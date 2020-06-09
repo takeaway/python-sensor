@@ -17,7 +17,8 @@ def handle_aiohttp_exception(scope, exception, http_status_code=500):
             exception.headers['Server-Timing'] = "intid;desc=%s" % scope.span.context.trace_id
 
         scope.span.set_tag("http.status_code", http_status_code)
-        scope.span.log_exception(exception)
+        if 500 <= http_status_code <= 511:
+            scope.span.log_exception(exception)
 
 
 try:
